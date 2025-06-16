@@ -369,7 +369,7 @@ static void USB_HostMsdFatfsTest(usb_host_msd_fatfs_instance_t *msdFatfsInstance
     }
 #endif
 
-#if FF_USE_MKFS
+#if FF_USE_MKFS && 0
     MKFS_PARM formatOptions = {FM_SFD | FM_ANY, 0, 0, 0, 0};
     usb_echo("test f_mkfs......");
     fatfsCode = f_mkfs((char const *)&driverNumberBuffer[0], &formatOptions, testBuffer, FF_MAX_SS);
