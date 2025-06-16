@@ -19,6 +19,7 @@
 #include "fsl_sysmpu.h"
 #endif /* FSL_FEATURE_SOC_SYSMPU_COUNT */
 #include "app.h"
+#include "DebugMonitor/DebugMonitor.h"
 
 #if ((!USB_HOST_CONFIG_KHCI) && (!USB_HOST_CONFIG_EHCI) && (!USB_HOST_CONFIG_OHCI) && (!USB_HOST_CONFIG_IP3516HS))
 #error Please enable USB_HOST_CONFIG_KHCI, USB_HOST_CONFIG_EHCI, USB_HOST_CONFIG_OHCI, or USB_HOST_CONFIG_IP3516HS in file usb_host_config.
@@ -68,6 +69,8 @@ void BOARD_InitHardware(void);
 /*! @brief USB host msd fatfs instance global variable */
 extern usb_host_msd_fatfs_instance_t g_MsdFatfsInstance;
 usb_host_handle g_HostHandle;
+static TaskHandle_t g_HostAppHandle;
+static TaskHandle_t g_DebugHandle;
 
 /*******************************************************************************
  * Code
@@ -183,8 +186,34 @@ static void USB_HostApplicationTask(void *param)
 {
     while (1)
     {
-        USB_HostMsdTask(param);
+		ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+        USB_HostMsdTask(&g_MsdFatfsInstance);
     }
+}
+
+void USB_HostAppWakeUp(void)
+{
+	xTaskNotifyGive(g_HostAppHandle);
+}
+
+static void DebugMonitorTask(void *param)
+{
+	while (1)
+	{
+		ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+		DebugMonitor_idleLog();
+	}
+}
+
+static void StdInTask(void *param)
+{
+	while (1)
+	{
+		int c = DebugMonitor_getcLog();
+
+		DebugMonitor_entryLog(c);
+		xTaskNotifyGive(g_DebugHandle);
+	}
 }
 
 int main(void)
@@ -201,10 +230,17 @@ int main(void)
     {
         usb_echo("create host task error\r\n");
     }
-    if (xTaskCreate(USB_HostApplicationTask, "app task", 2300L / sizeof(portSTACK_TYPE), &g_MsdFatfsInstance, 3,
-                    NULL) != pdPASS)
+    if (xTaskCreate(USB_HostApplicationTask, "app task", 2300L / sizeof(portSTACK_TYPE), NULL, 3, &g_HostAppHandle) != pdPASS)
     {
-        usb_echo("create mouse task error\r\n");
+        usb_echo("create app task error\r\n");
+    }
+    if (xTaskCreate(DebugMonitorTask, "debug monitor task", 2000L / sizeof(portSTACK_TYPE), NULL, 1, &g_DebugHandle) != pdPASS)
+    {
+    	usb_echo("create debug task error\r\n");
+    }
+    if (xTaskCreate(StdInTask, "stdin task", 2000L / sizeof(portSTACK_TYPE), NULL, 0, NULL) != pdPASS)
+    {
+    	usb_echo("create stdin task error\r\n");
     }
 
     vTaskStartScheduler();

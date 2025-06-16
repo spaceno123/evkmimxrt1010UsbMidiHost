@@ -30,6 +30,8 @@
  * Prototypes
  ******************************************************************************/
 
+void USB_HostAppWakeUp(void);
+
 /*!
  * @brief host msd control transfer callback.
  *
@@ -123,6 +125,7 @@ void USB_HostMsdControlCallback(void *param, uint8_t *data, uint32_t dataLength,
     {
         msdFatfsInstance->runWaitState = kUSB_HostMsdRunIdle;
         msdFatfsInstance->runState     = kUSB_HostMsdRunMassStorageTest;
+        USB_HostAppWakeUp();
     }
     controlIng    = 0;
     controlStatus = status;
@@ -954,11 +957,12 @@ usb_status_t USB_HostMsdEvent(usb_device_handle deviceHandle,
                         g_MsdFatfsInstance.deviceState = kStatus_DEV_Attached;
 
                         USB_HostHelperGetPeripheralInformation(deviceHandle, kUSB_HostGetDevicePID, &infoValue);
-                        usb_echo("mass storage device attached:pid=0x%x", infoValue);
+                        usb_echo("mass storage device attached:pid=0x%x ", infoValue);
                         USB_HostHelperGetPeripheralInformation(deviceHandle, kUSB_HostGetDeviceVID, &infoValue);
                         usb_echo("vid=0x%x ", infoValue);
                         USB_HostHelperGetPeripheralInformation(deviceHandle, kUSB_HostGetDeviceAddress, &infoValue);
                         usb_echo("address=%d\r\n", infoValue);
+                        USB_HostAppWakeUp();
                     }
                     else
                     {
@@ -978,6 +982,7 @@ usb_status_t USB_HostMsdEvent(usb_device_handle deviceHandle,
                 if (g_MsdFatfsInstance.deviceState != kStatus_DEV_Idle)
                 {
                     g_MsdFatfsInstance.deviceState = kStatus_DEV_Detached;
+                    USB_HostAppWakeUp();
                 }
             }
             break;
