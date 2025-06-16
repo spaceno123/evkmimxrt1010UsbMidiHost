@@ -11,6 +11,8 @@
 #include "fsl_device_registers.h"
 #include "usb_host_msd.h"
 #include "host_msd_fatfs.h"
+#include "host_keyboard_mouse.h"
+#include "host_keyboard.h"
 #include "fsl_common.h"
 #include "pin_mux.h"
 #include "clock_config.h"
@@ -68,6 +70,8 @@ void BOARD_InitHardware(void);
  ******************************************************************************/
 /*! @brief USB host msd fatfs instance global variable */
 extern usb_host_msd_fatfs_instance_t g_MsdFatfsInstance;
+/*! @brief USB host keyboard instance global variable */
+extern usb_host_keyboard_instance_t g_HostHidKeyboard;
 usb_host_handle g_HostHandle;
 static TaskHandle_t g_HostAppHandle;
 static TaskHandle_t g_DebugHandle;
@@ -124,11 +128,18 @@ static usb_status_t USB_HostEvent(usb_device_handle deviceHandle,
                                   usb_host_configuration_handle configurationHandle,
                                   uint32_t eventCode)
 {
+    usb_status_t status1;
+    usb_status_t status2;
     usb_status_t status = kStatus_USB_Success;
     switch (eventCode & 0x0000FFFFU)
     {
         case kUSB_HostEventAttach:
-            status = USB_HostMsdEvent(deviceHandle, configurationHandle, eventCode);
+            status1 = USB_HostMsdEvent(deviceHandle, configurationHandle, eventCode);
+            status2 = USB_HostHidKeyboardEvent(deviceHandle, configurationHandle, eventCode);
+            if ((status1 == kStatus_USB_NotSupported) && (status2 == kStatus_USB_NotSupported))
+            {
+                status = kStatus_USB_NotSupported;
+            }
             break;
 
         case kUSB_HostEventNotSupported:
@@ -136,11 +147,21 @@ static usb_status_t USB_HostEvent(usb_device_handle deviceHandle,
             break;
 
         case kUSB_HostEventEnumerationDone:
-            status = USB_HostMsdEvent(deviceHandle, configurationHandle, eventCode);
+            status1 = USB_HostMsdEvent(deviceHandle, configurationHandle, eventCode);
+            status2 = USB_HostHidKeyboardEvent(deviceHandle, configurationHandle, eventCode);
+            if ((status1 != kStatus_USB_Success) && (status2 != kStatus_USB_Success))
+            {
+                status = kStatus_USB_Error;
+            }
             break;
 
         case kUSB_HostEventDetach:
-            status = USB_HostMsdEvent(deviceHandle, configurationHandle, eventCode);
+            status1 = USB_HostMsdEvent(deviceHandle, configurationHandle, eventCode);
+            status2 = USB_HostHidKeyboardEvent(deviceHandle, configurationHandle, eventCode);
+            if ((status1 != kStatus_USB_Success) && (status2 != kStatus_USB_Success))
+            {
+                status = kStatus_USB_Error;
+            }
             break;
 
         case kUSB_HostEventEnumerationFail:
@@ -188,6 +209,7 @@ static void USB_HostApplicationTask(void *param)
     {
 		ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
         USB_HostMsdTask(&g_MsdFatfsInstance);
+        USB_HostHidKeyboardTask(&g_HostHidKeyboard);
     }
 }
 
@@ -214,6 +236,13 @@ static void StdInTask(void *param)
 		DebugMonitor_entryLog(c);
 		xTaskNotifyGive(g_DebugHandle);
 	}
+}
+
+void KeyboardToDebugMonitor(int c)
+{
+	c = c == 0x0a ? 0x0d : c;
+	DebugMonitor_entryLog(c);
+	xTaskNotifyGive(g_DebugHandle);
 }
 
 int main(void)
