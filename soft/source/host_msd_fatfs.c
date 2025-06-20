@@ -384,7 +384,7 @@ static void USB_HostMsdFatfsTest(usb_host_msd_fatfs_instance_t *msdFatfsInstance
     }
     usb_echo("success\r\n");
 #endif /* FF_USE_MKFS */
-
+#if 0
     usb_echo("test f_getfree:\r\n");
     fatfsCode = f_getfree((char const *)&driverNumberBuffer[0], (DWORD *)&freeClusterNumber, &fs);
     if (fatfsCode)
@@ -813,7 +813,7 @@ static void USB_HostMsdFatfsTest(usb_host_msd_fatfs_instance_t *msdFatfsInstance
         return;
     }
     usb_echo("success\r\n");
-
+#endif	//#if 0
     USB_HostMsdFatfsTestDone();
 }
 
@@ -850,6 +850,13 @@ void USB_HostMsdTask(void *arg)
                 USB_HostMsdDeinit(msdFatfsInstance->deviceHandle,
                                   msdFatfsInstance->classHandle); /* msd class de-initialization */
                 msdFatfsInstance->classHandle = NULL;
+
+                {
+                    uint8_t driverNumberBuffer[3];
+
+                    sprintf((char *)&driverNumberBuffer[0], "%c:", USBDISK + '0');
+                	f_unmount((char const *)&driverNumberBuffer[0]);
+                }
 
                 usb_echo("mass storage device detached\r\n");
                 break;
