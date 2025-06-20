@@ -139,12 +139,12 @@
 /*!
  * @brief ehci QH max count.
  */
-#define USB_HOST_CONFIG_EHCI_MAX_QH (8U)
+#define USB_HOST_CONFIG_EHCI_MAX_QH (9U)
 
 /*!
  * @brief ehci QTD max count.
  */
-#define USB_HOST_CONFIG_EHCI_MAX_QTD (8U)
+#define USB_HOST_CONFIG_EHCI_MAX_QTD (9U)
 
 /*!
  * @brief ehci ITD max count.
