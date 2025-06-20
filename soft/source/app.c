@@ -13,6 +13,7 @@
 #include "host_msd_fatfs.h"
 #include "host_keyboard_mouse.h"
 #include "host_keyboard.h"
+#include "host_midi.h"
 #include "fsl_common.h"
 #include "pin_mux.h"
 #include "clock_config.h"
@@ -65,6 +66,8 @@ extern void USB_HostIsrEnable(void);
 extern void USB_HostTaskFn(void *param);
 void BOARD_InitHardware(void);
 
+void send_midi_test(char c);
+
 /*******************************************************************************
  * Variables
  ******************************************************************************/
@@ -72,6 +75,8 @@ void BOARD_InitHardware(void);
 extern usb_host_msd_fatfs_instance_t g_MsdFatfsInstance;
 /*! @brief USB host keyboard instance global variable */
 extern usb_host_keyboard_instance_t g_HostHidKeyboard;
+/*! @brief USB host midi instance global variable */
+extern host_midi_instance_t g_HostMidi;
 usb_host_handle g_HostHandle;
 static TaskHandle_t g_HostAppHandle;
 static TaskHandle_t g_DebugHandle;
@@ -130,13 +135,17 @@ static usb_status_t USB_HostEvent(usb_device_handle deviceHandle,
 {
     usb_status_t status1;
     usb_status_t status2;
+    usb_status_t status3;
     usb_status_t status = kStatus_USB_Success;
     switch (eventCode & 0x0000FFFFU)
     {
         case kUSB_HostEventAttach:
             status1 = USB_HostMsdEvent(deviceHandle, configurationHandle, eventCode);
             status2 = USB_HostHidKeyboardEvent(deviceHandle, configurationHandle, eventCode);
-            if ((status1 == kStatus_USB_NotSupported) && (status2 == kStatus_USB_NotSupported))
+            status3 = USB_HostMidiEvent(deviceHandle, configurationHandle, eventCode);
+            if ((status1 == kStatus_USB_NotSupported) &&
+            	(status2 == kStatus_USB_NotSupported) &&
+				(status3 == kStatus_USB_NotSupported))
             {
                 status = kStatus_USB_NotSupported;
             }
@@ -149,7 +158,10 @@ static usb_status_t USB_HostEvent(usb_device_handle deviceHandle,
         case kUSB_HostEventEnumerationDone:
             status1 = USB_HostMsdEvent(deviceHandle, configurationHandle, eventCode);
             status2 = USB_HostHidKeyboardEvent(deviceHandle, configurationHandle, eventCode);
-            if ((status1 != kStatus_USB_Success) && (status2 != kStatus_USB_Success))
+            status3 = USB_HostMidiEvent(deviceHandle, configurationHandle, eventCode);
+            if ((status1 != kStatus_USB_Success) &&
+            	(status2 != kStatus_USB_Success) &&
+				(status3 != kStatus_USB_Success))
             {
                 status = kStatus_USB_Error;
             }
@@ -158,7 +170,10 @@ static usb_status_t USB_HostEvent(usb_device_handle deviceHandle,
         case kUSB_HostEventDetach:
             status1 = USB_HostMsdEvent(deviceHandle, configurationHandle, eventCode);
             status2 = USB_HostHidKeyboardEvent(deviceHandle, configurationHandle, eventCode);
-            if ((status1 != kStatus_USB_Success) && (status2 != kStatus_USB_Success))
+            status3 = USB_HostMidiEvent(deviceHandle, configurationHandle, eventCode);
+            if ((status1 != kStatus_USB_Success) &&
+            	(status2 != kStatus_USB_Success) &&
+				(status3 != kStatus_USB_Success))
             {
                 status = kStatus_USB_Error;
             }
@@ -210,6 +225,7 @@ static void USB_HostApplicationTask(void *param)
 		ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
         USB_HostMsdTask(&g_MsdFatfsInstance);
         USB_HostHidKeyboardTask(&g_HostHidKeyboard);
+        USB_HostMidiTask(&g_HostMidi);
     }
 }
 
@@ -235,6 +251,10 @@ static void StdInTask(void *param)
 
 		DebugMonitor_entryLog(c);
 		xTaskNotifyGive(g_DebugHandle);
+		if (!dmcheck(eDebugMonitorInterface_Log))
+		{
+			send_midi_test(c);
+		}
 	}
 }
 
@@ -243,6 +263,33 @@ void KeyboardToDebugMonitor(int c)
 	c = c == 0x0a ? 0x0d : c;
 	DebugMonitor_entryLog(c);
 	xTaskNotifyGive(g_DebugHandle);
+	if (!dmcheck(eDebugMonitorInterface_Log))
+	{
+		send_midi_test(c);
+	}
+}
+
+#include "ctype.h"
+
+void send_midi_test(char c)
+{
+	static const char key[] = "azsxcfvgbnjmk,l./";
+
+	if (isupper(c))
+	{
+		c = tolower(c);
+	}
+	for (int i = 0; i < sizeof(key); i++)
+	{
+		if (c == key[i])
+		{
+			uint8_t note = 56 + i;
+
+			USB_HostMidiSendShortMessage(0, 0x90 + 9, note, 100);
+			USB_HostMidiSendShortMessage(0, 0x80 + 9, note, 64);
+			break;
+		}
+	}
 }
 
 int main(void)

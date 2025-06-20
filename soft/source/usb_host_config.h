@@ -249,4 +249,11 @@
  */
 #define USB_HOST_CONFIG_PRINTER (1U)
 
+/*!
+ * @brief host MIDI class instance count, meantime it indicates MIDI class enable or disable.
+ *        - if 0, host MIDI class driver is disable.
+ *        - if greater than 0, host MIDI class driver is enable.
+ */
+#define USB_HOST_CONFIG_MIDI (1U)
+
 #endif /* _USB_HOST_CONFIG_H_ */
