@@ -199,6 +199,21 @@ void dmflush(eDebugMonitorInterface d)
 	return;
 }
 
+int dmcheck(eDebugMonitorInterface d)
+{
+	int ret = 0;
+
+	if (d < eDebugMonitorInterfaceNumOf) {
+		DebugMonitor_t *pD = &debugMonitor[d];
+
+		if (pD->phase != 0) {
+			ret = 1;
+		}
+	}
+
+	return ret;
+}
+
 #define dmprintf dmprintf_force
 #define dmputc dmputc_force
 #define dmputs dmputs_force
