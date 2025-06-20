@@ -4,7 +4,7 @@ SDK の evkmimxrt1010_host_msd_fatfs_freertos をベースに DebugMonitor を�
 さらに evkmimxrt1010_host_hid_mouse_keyboard_freertos の keyboard 部分を追加して、  
 USB Host Class に MIDI を追加してみました。  
 
-USB HOST MIDI に関する追加は以下の通り  
+**USB HOST MIDI に関する追加は以下の通り**  
 
 - source に以下のファイルを追加  
 host_midi.c  
@@ -16,10 +16,9 @@ usb_host_midi.h
 ```
 #define USB_HOST_CONFIG_MIDI (1U)
 ```
+- app.c に必要な処理を追加
 
-
-
-テスト動作について
+**テスト動作について**
 
 ```
 接続構成
